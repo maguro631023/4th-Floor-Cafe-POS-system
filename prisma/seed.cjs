@@ -3,6 +3,7 @@
  * 直接 require .prisma/client 的 index.js，避開 default.js 的 #main-entry-point 解析問題
  */
 const path = require("path");
+const bcrypt = require("bcryptjs");
 const { PrismaClient } = require(path.join(__dirname, "../node_modules/.prisma/client/index.js"));
 const prisma = new PrismaClient();
 
@@ -67,6 +68,16 @@ async function main() {
       update: { name: c.name, sortOrder: c.sortOrder },
     });
   }
+  const adminEmail = "admin@4fcafe.com";
+  let admin = await prisma.user.findUnique({ where: { email: adminEmail } });
+  if (!admin) {
+    const passwordHash = await bcrypt.hash("admin123", 10);
+    admin = await prisma.user.create({
+      data: { email: adminEmail, passwordHash, name: "管理員", role: "ADMIN" },
+    });
+    console.log("Default admin created: admin@4fcafe.com / admin123");
+  }
+
   await prisma.product.deleteMany({});
   for (let i = 0; i < products.length; i++) {
     const p = products[i];

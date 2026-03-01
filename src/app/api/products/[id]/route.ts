@@ -7,6 +7,8 @@ const updateSchema = z.object({
   priceCents: z.number().int().min(0).optional(),
   categoryId: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
+  stockQuantity: z.number().int().min(0).nullable().optional(),
+  lowStockThreshold: z.number().int().min(0).nullable().optional(),
 });
 
 export async function PATCH(

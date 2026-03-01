@@ -6,6 +6,8 @@ const createSchema = z.object({
   name: z.string().min(1),
   priceCents: z.number().int().min(0),
   categoryId: z.string().nullable().optional(),
+  stockQuantity: z.number().int().min(0).nullable().optional(),
+  lowStockThreshold: z.number().int().min(0).nullable().optional(),
 });
 
 export async function GET(req: NextRequest) {
@@ -34,6 +36,8 @@ export async function POST(req: NextRequest) {
       priceCents: parsed.data.priceCents,
       categoryId: parsed.data.categoryId ?? null,
       sortOrder: count,
+      stockQuantity: parsed.data.stockQuantity ?? null,
+      lowStockThreshold: parsed.data.lowStockThreshold ?? null,
     },
     include: { category: true },
   });
