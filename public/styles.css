@@ -1,4 +1,4 @@
-/* Plain CSS only - no Tailwind directives to avoid requiring tailwindcss at build */
+/* Served statically - never processed by PostCSS/Tailwind */
 :root {
   --foreground: #1c1917;
   --background: #fafaf9;
