@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { getPrisma } from "@/lib/db";
 import { z } from "zod";
 
 const createOrderSchema = z.object({
@@ -13,6 +13,7 @@ const createOrderSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const prisma = await getPrisma();
   const body = await req.json();
   const parsed = createOrderSchema.safeParse(body);
   if (!parsed.success) {
@@ -47,6 +48,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  const prisma = await getPrisma();
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date"); // YYYY-MM-DD
   const start = date ? new Date(date + "T00:00:00") : undefined;
