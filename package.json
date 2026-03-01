@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "npm install --include=dev && next build",
+    "build": "npm install tailwindcss autoprefixer && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
