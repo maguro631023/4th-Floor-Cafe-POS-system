@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "npm install && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
@@ -16,11 +16,9 @@
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",
-    "autoprefixer": "^10.4.20",
     "next": "^15.0.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "tailwindcss": "^3.4.17",
     "zod": "^3.23.8"
   },
   "devDependencies": {
