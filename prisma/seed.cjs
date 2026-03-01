@@ -1,7 +1,9 @@
 /**
- * 4樓咖啡 seed - 使用 Node 執行 (node prisma/seed.cjs)，避開 tsx + Prisma 6 #main-entry-point 問題
+ * 4樓咖啡 seed - 使用 Node 執行 (node prisma/seed.cjs)
+ * 直接 require .prisma/client 的 index.js，避開 default.js 的 #main-entry-point 解析問題
  */
-const { PrismaClient } = require("@prisma/client");
+const path = require("path");
+const { PrismaClient } = require(path.join(__dirname, "../node_modules/.prisma/client/index.js"));
 const prisma = new PrismaClient();
 
 const categories = [
