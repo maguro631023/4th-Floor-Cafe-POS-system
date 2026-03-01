@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,6 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-TW">
+      <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
       <body className="antialiased min-h-screen bg-stone-100">
         <header className="bg-amber-900 text-amber-50 py-3 px-4 shadow">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
