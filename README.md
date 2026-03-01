@@ -54,9 +54,11 @@ npm run dev
 
 ### 建議 Railway 設定
 
-- **Build Command**: `npx prisma generate && npm run build`
+- **Build Command**（必填）: `npm install && npx prisma generate && npm run build`  
+  （必須含 `npm install`，build 時才會安裝 tailwindcss；若只填 `npx prisma generate && npm run build` 會出現 Cannot find module 'tailwindcss'）
 - **Start Command**: `npm run start`
-- **Root Directory**: 專案根目錄
+- **Root Directory**: 專案根目錄  
+- 若仍失敗：到 Settings → 清除 **Build Cache** 後再 Redeploy
 
 首次上線後在 Railway 的 PostgreSQL 執行一次：
 
