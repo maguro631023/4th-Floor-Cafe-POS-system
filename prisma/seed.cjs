@@ -1,18 +1,17 @@
 /**
- * 4樓咖啡 - 品項與分類（依營收明細 Excel 對應）
- * 價格以「分」儲存：120 元 → 12000
- * 使用動態 import 避免 tsx + Prisma 6 的 #main-entry-point 解析問題
+ * 4樓咖啡 seed - 使用 Node 執行 (node prisma/seed.cjs)，避開 tsx + Prisma 6 #main-entry-point 問題
  */
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 
-const categories: { id: string; name: string; sortOrder: number }[] = [
+const categories = [
   { id: "drink", name: "飲品", sortOrder: 0 },
   { id: "light_food", name: "輕食", sortOrder: 1 },
   { id: "set_meal", name: "套餐", sortOrder: 2 },
   { id: "other", name: "其他", sortOrder: 3 },
 ];
 
-// 品名與售價：priceCents = 售價(元) * 100，對應 Excel 欄位
-const products: { name: string; priceCents: number; categoryId: string }[] = [
+const products = [
   { name: "美式第一杯", priceCents: 12000, categoryId: "drink" },
   { name: "美式", priceCents: 1500, categoryId: "drink" },
   { name: "拿鐵(小)", priceCents: 8000, categoryId: "drink" },
@@ -59,9 +58,6 @@ const products: { name: string; priceCents: number; categoryId: string }[] = [
 ];
 
 async function main() {
-  const { PrismaClient } = await import("@prisma/client");
-  const prisma = new PrismaClient();
-
   for (const c of categories) {
     await prisma.category.upsert({
       where: { id: c.id },
@@ -69,7 +65,6 @@ async function main() {
       update: { name: c.name, sortOrder: c.sortOrder },
     });
   }
-
   await prisma.product.deleteMany({});
   for (let i = 0; i < products.length; i++) {
     const p = products[i];
