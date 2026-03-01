@@ -5,11 +5,14 @@ export async function GET(req: NextRequest) {
   const prisma = await getPrisma();
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date"); // YYYY-MM-DD
-  if (!date) {
-    return NextResponse.json({ error: "date required" }, { status: 400 });
+  const tz = searchParams.get("tz"); // 時區偏移（小時），如 8 表示 UTC+8
+  if (!date || !date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    return NextResponse.json({ error: "date required (YYYY-MM-DD)" }, { status: 400 });
   }
-  const start = new Date(date + "T00:00:00");
-  const end = new Date(date + "T23:59:59.999");
+  const tzHours = tz ? parseInt(tz, 10) : 0;
+  const ms = new Date(date + "T00:00:00.000Z").getTime() - tzHours * 3600000;
+  const start = new Date(ms);
+  const end = new Date(ms + 24 * 3600000 - 1);
 
   const orders = await prisma.order.findMany({
     where: { createdAt: { gte: start, lte: end }, status: "COMPLETED" },

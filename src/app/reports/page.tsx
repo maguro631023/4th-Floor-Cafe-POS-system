@@ -10,13 +10,17 @@ type DailyReport = {
 };
 
 export default function ReportsPage() {
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  });
   const [report, setReport] = useState<DailyReport | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/reports/daily?date=${date}`)
+    const tz = -new Date().getTimezoneOffset() / 60;
+    fetch(`/api/reports/daily?date=${date}&tz=${tz}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.error || !data.date) setReport(null);

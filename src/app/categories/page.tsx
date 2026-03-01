@@ -294,7 +294,7 @@ export default function CategoriesPage() {
                             type="button"
                             onClick={() => deleteCategory(c)}
                             disabled={deletingId === c.id}
-                            className="text-red-600 font-medium hover:underline disabled:opacity-50"
+                            className="rounded border border-red-300 bg-red-50 px-2 py-1 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
                           >
                             {deletingId === c.id ? "刪除中..." : "刪除"}
                           </button>

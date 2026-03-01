@@ -23,7 +23,12 @@ type Order = {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const getLocalDate = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const [date, setDate] = useState(getLocalDate);
+  const [noDateFilter, setNoDateFilter] = useState(false);
   const [tableFilter, setTableFilter] = useState("");
   const [orderNoFilter, setOrderNoFilter] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -31,7 +36,10 @@ export default function OrdersPage() {
   const fetchOrders = useCallback(() => {
     setLoading(true);
     const params = new URLSearchParams();
-    params.set("date", date);
+    if (!noDateFilter && date) {
+      params.set("date", date);
+      params.set("tz", String(-new Date().getTimezoneOffset() / 60));
+    }
     if (tableFilter.trim()) params.set("table", tableFilter.trim());
     if (orderNoFilter.trim()) params.set("orderNo", orderNoFilter.trim());
     fetch(`/api/orders?${params}`)
@@ -39,7 +47,7 @@ export default function OrdersPage() {
       .then(setOrders)
       .catch(() => setOrders([]))
       .finally(() => setLoading(false));
-  }, [date, tableFilter, orderNoFilter]);
+  }, [date, noDateFilter, tableFilter, orderNoFilter]);
 
   useEffect(() => {
     fetchOrders();
@@ -58,12 +66,23 @@ export default function OrdersPage() {
       <div className="flex flex-wrap gap-4 items-end">
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-stone-600">日期</span>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="rounded border border-stone-300 px-3 py-2"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              disabled={noDateFilter}
+              className="rounded border border-stone-300 px-3 py-2 disabled:opacity-50"
+            />
+            <label className="flex items-center gap-1 text-sm text-stone-600 whitespace-nowrap">
+              <input
+                type="checkbox"
+                checked={noDateFilter}
+                onChange={(e) => setNoDateFilter(e.target.checked)}
+              />
+              不限日期
+            </label>
+          </div>
         </label>
         <label className="flex flex-col gap-1 text-sm">
           <span className="text-stone-600">桌號</span>

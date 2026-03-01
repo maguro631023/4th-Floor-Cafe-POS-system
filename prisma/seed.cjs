@@ -78,6 +78,7 @@ async function main() {
     console.log("Default admin created: admin@4fcafe.com / admin123");
   }
 
+  await prisma.order.deleteMany({});
   await prisma.product.deleteMany({});
   for (let i = 0; i < products.length; i++) {
     const p = products[i];

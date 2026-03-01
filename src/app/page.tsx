@@ -61,11 +61,14 @@ export default function POSPage() {
     setSubmitting(true);
     setMessage(null);
     try {
+      const d = new Date();
+      const clientDate = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tableNo: tableNo.trim() || null,
+          clientDate,
           items: cart.map((i) => ({
             productId: i.product.id,
             quantity: i.quantity,

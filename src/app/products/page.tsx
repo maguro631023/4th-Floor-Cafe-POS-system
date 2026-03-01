@@ -174,6 +174,12 @@ export default function ProductsPage() {
       <p className="text-stone-600 text-sm">可修改品名與售價（元），停用後品項不會在收銀頁顯示。可新增或刪除品項（已有訂單紀錄的品項無法刪除）。</p>
 
       <div className="flex items-center gap-4">
+        <a
+          href="/categories"
+          className="rounded-lg border border-amber-300 bg-white px-4 py-2 text-amber-800 font-medium hover:bg-amber-50"
+        >
+          分類管理
+        </a>
         {!showAddForm ? (
           <button
             type="button"
