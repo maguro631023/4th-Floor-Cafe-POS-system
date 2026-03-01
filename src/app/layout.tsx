@@ -19,6 +19,7 @@ export default function RootLayout({
             <h1 className="text-xl font-bold">4樓咖啡 POS</h1>
             <nav className="flex gap-4">
               <a href="/" className="hover:underline">收銀</a>
+              <a href="/orders" className="hover:underline">訂單查詢</a>
               <a href="/products" className="hover:underline">品項管理</a>
               <a href="/categories" className="hover:underline">分類管理</a>
               <a href="/reports" className="hover:underline">營收報表</a>

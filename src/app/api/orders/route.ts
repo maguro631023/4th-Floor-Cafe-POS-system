@@ -54,12 +54,16 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date"); // YYYY-MM-DD
   const table = searchParams.get("table"); // 桌號篩選
+  const orderNo = searchParams.get("orderNo"); // 訂單編號（部分比對）
   const start = date ? new Date(date + "T00:00:00") : undefined;
   const end = date ? new Date(date + "T23:59:59.999") : undefined;
 
-  const where: { createdAt?: { gte: Date; lte: Date }; tableNo?: string } = {};
-  if (date) where.createdAt = { gte: start!, lte: end! };
+  const where: Record<string, unknown> = {};
+  if (date && date.match(/^\d{4}-\d{2}-\d{2}$/))
+    where.createdAt = { gte: start!, lte: end! };
   if (table != null && table !== "") where.tableNo = table;
+  if (orderNo != null && orderNo.trim() !== "")
+    where.orderNo = { contains: orderNo.trim() };
   const orders = await prisma.order.findMany({
     where,
     orderBy: { createdAt: "desc" },
