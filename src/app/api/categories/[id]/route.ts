@@ -4,9 +4,7 @@ import { z } from "zod";
 
 const updateSchema = z.object({
   name: z.string().min(1).optional(),
-  priceCents: z.number().int().min(0).optional(),
-  categoryId: z.string().nullable().optional(),
-  isActive: z.boolean().optional(),
+  sortOrder: z.number().int().min(0).optional(),
 });
 
 export async function PATCH(
@@ -20,12 +18,12 @@ export async function PATCH(
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const product = await prisma.product.update({
+  const category = await prisma.category.update({
     where: { id },
     data: parsed.data,
-    include: { category: true },
+    include: { _count: { select: { products: true } } },
   });
-  return NextResponse.json(product);
+  return NextResponse.json(category);
 }
 
 export async function DELETE(
@@ -34,13 +32,6 @@ export async function DELETE(
 ) {
   const prisma = await getPrisma();
   const { id } = await params;
-  const orderItemsCount = await prisma.orderItem.count({ where: { productId: id } });
-  if (orderItemsCount > 0) {
-    return NextResponse.json(
-      { error: { message: "此品項已有訂單紀錄，無法刪除。請改為停用。" } },
-      { status: 400 }
-    );
-  }
-  await prisma.product.delete({ where: { id } });
+  await prisma.category.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

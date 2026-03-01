@@ -20,6 +20,7 @@ export default function RootLayout({
             <nav className="flex gap-4">
               <a href="/" className="hover:underline">收銀</a>
               <a href="/products" className="hover:underline">品項管理</a>
+              <a href="/categories" className="hover:underline">分類管理</a>
               <a href="/reports" className="hover:underline">營收報表</a>
             </nav>
           </div>

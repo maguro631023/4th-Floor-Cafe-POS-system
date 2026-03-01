@@ -11,14 +11,23 @@ type Product = {
   category: { id: string; name: string } | null;
 };
 
+type Category = { id: string; name: string };
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPrice, setEditPrice] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newPrice, setNewPrice] = useState("");
+  const [newCategoryId, setNewCategoryId] = useState<string>("");
+  const [adding, setAdding] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchProducts = useCallback(() => {
     setLoading(true);
@@ -32,6 +41,13 @@ export default function ProductsPage() {
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  useEffect(() => {
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then(setCategories)
+      .catch(() => setCategories([]));
+  }, []);
 
   const startEdit = (p: Product) => {
     setEditingId(p.id);
@@ -91,17 +107,146 @@ export default function ProductsPage() {
     }
   };
 
+  const submitNew = async () => {
+    const price = Math.round(parseFloat(newPrice) * 100);
+    if (!newName.trim()) {
+      setMessage({ type: "err", text: "請輸入品名" });
+      return;
+    }
+    if (isNaN(price) || price < 0) {
+      setMessage({ type: "err", text: "請輸入有效售價（元）" });
+      return;
+    }
+    setAdding(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newName.trim(),
+          priceCents: price,
+          categoryId: newCategoryId || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || "新增失敗");
+      setProducts((prev) => [...prev, data]);
+      setMessage({ type: "ok", text: "已新增品項" });
+      setShowAddForm(false);
+      setNewName("");
+      setNewPrice("");
+      setNewCategoryId("");
+    } catch (e) {
+      setMessage({ type: "err", text: e instanceof Error ? e.message : "新增失敗" });
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const deleteProduct = async (p: Product) => {
+    if (!confirm(`確定要刪除「${p.name}」？若此品項已有訂單紀錄則無法刪除。`)) return;
+    setDeletingId(p.id);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/products/${p.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error?.message || "刪除失敗");
+      setProducts((prev) => prev.filter((x) => x.id !== p.id));
+      setMessage({ type: "ok", text: "已刪除品項" });
+    } catch (e) {
+      setMessage({ type: "err", text: e instanceof Error ? e.message : "刪除失敗" });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const byCategory = products.reduce<Record<string, Product[]>>((acc, p) => {
     const key = p.category?.name ?? "未分類";
     if (!acc[key]) acc[key] = [];
     acc[key].push(p);
     return acc;
-  });
+  }, {});
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-stone-800">品項管理</h1>
-      <p className="text-stone-600 text-sm">可修改品名與售價（元），停用後品項不會在收銀頁顯示。</p>
+      <p className="text-stone-600 text-sm">可修改品名與售價（元），停用後品項不會在收銀頁顯示。可新增或刪除品項（已有訂單紀錄的品項無法刪除）。</p>
+
+      <div className="flex items-center gap-4">
+        {!showAddForm ? (
+          <button
+            type="button"
+            onClick={() => setShowAddForm(true)}
+            className="rounded-lg bg-amber-600 px-4 py-2 text-white font-medium hover:bg-amber-700"
+          >
+            新增品項
+          </button>
+        ) : (
+          <div className="flex flex-wrap items-end gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-stone-600">品名</span>
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="例：拿鐵(大)"
+                className="rounded border border-stone-300 px-2 py-1.5 w-40"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-stone-600">售價（元）</span>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={newPrice}
+                onChange={(e) => setNewPrice(e.target.value)}
+                placeholder="100"
+                className="rounded border border-stone-300 px-2 py-1.5 w-24"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-stone-600">分類</span>
+              <select
+                value={newCategoryId}
+                onChange={(e) => setNewCategoryId(e.target.value)}
+                className="rounded border border-stone-300 px-2 py-1.5 w-32"
+              >
+                <option value="">未分類</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={submitNew}
+                disabled={adding}
+                className="rounded bg-amber-600 px-3 py-1.5 text-white text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
+              >
+                {adding ? "新增中..." : "送出"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddForm(false);
+                  setNewName("");
+                  setNewPrice("");
+                  setNewCategoryId("");
+                  setMessage(null);
+                }}
+                className="rounded border border-stone-300 px-3 py-1.5 text-stone-600 text-sm hover:bg-stone-100"
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {message && (
         <p className={message.type === "ok" ? "text-green-600 text-sm" : "text-red-600 text-sm"}>
@@ -124,7 +269,7 @@ export default function ProductsPage() {
                       <th className="px-4 py-2">品名</th>
                       <th className="px-4 py-2 w-28">售價（元）</th>
                       <th className="px-4 py-2 w-24">狀態</th>
-                      <th className="px-4 py-2 w-32">操作</th>
+                      <th className="px-4 py-2 w-40">操作</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -183,13 +328,23 @@ export default function ProductsPage() {
                               </button>
                             </span>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => startEdit(p)}
-                              className="text-amber-700 font-medium hover:underline"
-                            >
-                              編輯
-                            </button>
+                            <span className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => startEdit(p)}
+                                className="text-amber-700 font-medium hover:underline"
+                              >
+                                編輯
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteProduct(p)}
+                                disabled={deletingId === p.id}
+                                className="text-red-600 font-medium hover:underline disabled:opacity-50"
+                              >
+                                {deletingId === p.id ? "刪除中..." : "刪除"}
+                              </button>
+                            </span>
                           )}
                         </td>
                       </tr>
