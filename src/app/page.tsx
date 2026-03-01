@@ -11,9 +11,12 @@ type Product = {
 
 type CartItem = { product: Product; quantity: number };
 
+const QUICK_TABLES = ["1", "2", "3", "4", "5", "6", "7", "8", "外帶"];
+
 export default function POSPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [tableNo, setTableNo] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
@@ -62,6 +65,7 @@ export default function POSPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          tableNo: tableNo.trim() || null,
           items: cart.map((i) => ({
             productId: i.product.id,
             quantity: i.quantity,
@@ -71,8 +75,9 @@ export default function POSPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || "結帳失敗");
+      const tableLabel = data.tableNo ? ` 桌號：${data.tableNo}` : "";
       setCart([]);
-      setMessage({ type: "ok", text: `結帳成功 訂單號：${data.orderNo}` });
+      setMessage({ type: "ok", text: `結帳成功 訂單號：${data.orderNo}${tableLabel}` });
     } catch (e) {
       setMessage({ type: "err", text: e instanceof Error ? e.message : "結帳失敗" });
     } finally {
@@ -121,6 +126,32 @@ export default function POSPage() {
 
       <div className="bg-white rounded-xl border border-amber-200 shadow-sm p-4 h-fit">
         <h2 className="text-lg font-semibold text-stone-800 mb-3">購物車</h2>
+        <div className="mb-3">
+          <label className="block text-sm font-medium text-stone-600 mb-1">桌號</label>
+          <div className="flex flex-wrap gap-2 items-center">
+            <input
+              type="text"
+              value={tableNo}
+              onChange={(e) => setTableNo(e.target.value)}
+              placeholder="可輸入或點選"
+              className="rounded border border-stone-300 px-3 py-2 w-28 text-sm"
+            />
+            {QUICK_TABLES.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTableNo((prev) => (prev === t ? "" : t))}
+                className={`px-3 py-1.5 rounded text-sm font-medium border transition ${
+                  tableNo === t
+                    ? "bg-amber-600 text-white border-amber-600"
+                    : "bg-white border-amber-200 text-stone-700 hover:bg-amber-50"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
         {cart.length === 0 ? (
           <p className="text-stone-500 text-sm">尚未加入品項</p>
         ) : (

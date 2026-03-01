@@ -29,6 +29,7 @@ model Product {
 model Order {
   id          String      @id @default(cuid())
   orderNo     String      @unique // 訂單編號 e.g. 20260101-001
+  tableNo     String?     // 桌號 e.g. 1, A3, 外帶
   totalCents  Int         // 訂單總額（分）
   status      OrderStatus @default(COMPLETED)
   createdAt   DateTime    @default(now())
