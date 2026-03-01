@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "4樓咖啡 POS",
@@ -13,6 +13,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-TW">
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: `
+          :root { --foreground: #1c1917; --background: #fafaf9; }
+          body { color: var(--foreground); background: var(--background); }
+        ` }} />
+      </head>
+      <Script src="https://cdn.tailwindcss.com" strategy="beforeInteractive" />
       <body className="antialiased min-h-screen bg-stone-100">
         <header className="bg-amber-900 text-amber-50 py-3 px-4 shadow">
           <div className="max-w-6xl mx-auto flex items-center justify-between">
