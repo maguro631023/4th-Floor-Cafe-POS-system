@@ -1,0 +1,10 @@
+/* Plain CSS only - no Tailwind directives to avoid requiring tailwindcss at build */
+:root {
+  --foreground: #1c1917;
+  --background: #fafaf9;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+}
