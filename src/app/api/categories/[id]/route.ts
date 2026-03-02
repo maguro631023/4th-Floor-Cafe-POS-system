@@ -13,6 +13,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await getSession();
   const prisma = await getPrisma();
   const { id } = await params;
   const body = await req.json();
