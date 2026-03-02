@@ -9,7 +9,7 @@
     "dev": "next dev --turbopack",
     "build": "npm install && next build",
     "build:next": "next build",
-    "start": "next start",
+    "start": "node prisma/init-admin.cjs && next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
