@@ -12,6 +12,7 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await getSession();
   const prisma = await getPrisma();
   const { id } = await params;
   const body = await req.json();

@@ -71,3 +71,15 @@ model OrderItem {
   unitPriceCents Int // 結帳當下單價（分）
   subtotalCents  Int // quantity * unitPriceCents
 }
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String? // 操作者（登出時可能為空）
+  userEmail  String? // 操作者 email 快照
+  action     String // 操作類型：LOGIN, LOGOUT, CREATE, UPDATE, DELETE 等
+  resource   String // 資源：user, product, category, order 等
+  resourceId String? // 資源 ID
+  details    String? // 補充說明（JSON 或文字）
+  ip         String? // 來源 IP
+  createdAt  DateTime @default(now())
+}

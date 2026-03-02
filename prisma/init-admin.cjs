@@ -4,7 +4,7 @@
  */
 const path = require("path");
 const bcrypt = require("bcryptjs");
-const { PrismaClient } = require(path.join(__dirname, "../node_modules/.prisma/client/index.js"));
+const { PrismaClient } = require(path.join(__dirname, "../generated/prisma/index.js"));
 const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
 const prisma = new PrismaClient({ datasources: { db: { url: dbUrl } } });
 

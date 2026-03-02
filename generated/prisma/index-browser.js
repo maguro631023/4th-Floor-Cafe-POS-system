@@ -166,6 +166,18 @@ exports.Prisma.OrderItemScalarFieldEnum = {
   subtotalCents: 'subtotalCents'
 };
 
+exports.Prisma.AuditLogScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  userEmail: 'userEmail',
+  action: 'action',
+  resource: 'resource',
+  resourceId: 'resourceId',
+  details: 'details',
+  ip: 'ip',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -197,7 +209,8 @@ exports.Prisma.ModelName = {
   Category: 'Category',
   Product: 'Product',
   Order: 'Order',
-  OrderItem: 'OrderItem'
+  OrderItem: 'OrderItem',
+  AuditLog: 'AuditLog'
 };
 
 /**

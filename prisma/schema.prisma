@@ -1,6 +1,7 @@
 // 4樓咖啡 POS - PostgreSQL @ Railway
 generator client {
   provider = "prisma-client-js"
+  output   = "../generated/prisma"
 }
 
 datasource db {

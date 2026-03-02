@@ -4,7 +4,7 @@
  */
 const path = require("path");
 const bcrypt = require("bcryptjs");
-const { PrismaClient } = require(path.join(__dirname, "../node_modules/.prisma/client/index.js"));
+const { PrismaClient } = require(path.join(__dirname, "../generated/prisma/index.js"));
 // 若 DATABASE_URL 為 railway.internal，改用 DATABASE_PUBLIC_URL（build 時可能無法連私有網路）
 const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
 const prisma = new PrismaClient({ datasources: { db: { url: dbUrl } } });
