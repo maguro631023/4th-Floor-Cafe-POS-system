@@ -1,4 +1,4 @@
-import { getIronSession, SessionOptions, unsealData } from "iron-session";
+import { getIronSession, type IronSession, SessionOptions, unsealData } from "iron-session";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 
@@ -38,9 +38,9 @@ export async function getSessionFromCookie(cookieValue: string): Promise<{ user?
   }
 }
 
-export async function getSession() {
+export async function getSession(): Promise<IronSession<{ user?: SessionUser }>> {
   const cookieStore = await cookies();
-  return getIronSession(cookieStore, sessionOptions);
+  return getIronSession(cookieStore, sessionOptions) as Promise<IronSession<{ user?: SessionUser }>>;
 }
 
 export async function setSession(user: SessionUser) {
