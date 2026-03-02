@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { getPrisma } from "@/lib/db";
 import { getSession, hashPassword, canAccessUserManagement } from "@/lib/auth";
 import { z } from "zod";
@@ -31,11 +32,13 @@ export async function PATCH(
     );
   }
   const prisma = await getPrisma();
-  const data: { name?: string; role?: string; isActive?: boolean; passwordHash?: string } = {};
-  if (parsed.data.name != null) data.name = parsed.data.name.trim();
-  if (parsed.data.role != null) data.role = parsed.data.role;
-  if (parsed.data.isActive != null) data.isActive = parsed.data.isActive;
-  if (parsed.data.password != null) data.passwordHash = await hashPassword(parsed.data.password);
+  const passwordHash = parsed.data.password != null ? await hashPassword(parsed.data.password) : undefined;
+  const data: Prisma.UserUpdateInput = {
+    ...(parsed.data.name != null && { name: parsed.data.name.trim() }),
+    ...(parsed.data.role != null && { role: parsed.data.role as "ADMIN" | "MANAGER" | "STAFF" }),
+    ...(parsed.data.isActive != null && { isActive: parsed.data.isActive }),
+    ...(passwordHash != null && { passwordHash }),
+  };
   const user = await prisma.user.update({
     where: { id },
     data,

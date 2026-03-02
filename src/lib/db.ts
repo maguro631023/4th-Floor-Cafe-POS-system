@@ -8,7 +8,7 @@ export async function getPrisma(): Promise<PrismaClient> {
   if (globalForPrisma.prisma) return globalForPrisma.prisma;
   // 直接載入 .prisma/client/index.js，避開 default.js 的 #main-entry-point（Prisma 6 + Node/Next 解析問題）
   const require = createRequire(path.join(process.cwd(), "package.json"));
-  const clientPath = path.join(process.cwd(), "node_modules", ".prisma", "client", "index.js");
+  const clientPath = path.join(process.cwd(), "generated", "prisma", "index.js");
   const { PrismaClient: P } = require(clientPath);
   const client = new P() as PrismaClient;
   globalForPrisma.prisma = client;

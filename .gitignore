@@ -6,6 +6,9 @@ node_modules
 # testing
 coverage
 
+# prisma generated (outside node_modules to avoid EPERM on Windows)
+generated
+
 # next
 .next
 out

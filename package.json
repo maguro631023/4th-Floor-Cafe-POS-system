@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "npm install && next build",
+    "build:next": "next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
