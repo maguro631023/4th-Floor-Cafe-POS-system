@@ -9,6 +9,7 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  try {
   const body = await req.json();
   const parsed = bodySchema.safeParse(body);
   if (!parsed.success) {
@@ -32,4 +33,8 @@ export async function POST(req: NextRequest) {
     role: user.role,
   });
   return NextResponse.json({ ok: true, name: user.name });
+  } catch (err) {
+    console.error("[login]", err);
+    return NextResponse.json({ error: "登入失敗，請稍後再試" }, { status: 500 });
+  }
 }
