@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { getSession, hashPassword, canAccessUserManagement } from "@/lib/auth";
+import { recordAudit, getClientIp } from "@/lib/audit";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -58,6 +59,15 @@ export async function POST(req: NextRequest) {
       role: parsed.data.role,
     },
     select: { id: true, email: true, name: true, role: true, isActive: true, createdAt: true },
+  });
+  await recordAudit(prisma, {
+    userId: session.user.userId,
+    userEmail: session.user.email,
+    action: "CREATE",
+    resource: "user",
+    resourceId: user.id,
+    details: `新增使用者 ${user.email}`,
+    ip: getClientIp(req.headers),
   });
   return NextResponse.json(user);
 }

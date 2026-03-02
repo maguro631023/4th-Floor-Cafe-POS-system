@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
+import { getSession } from "@/lib/auth";
+import { recordAudit, getClientIp } from "@/lib/audit";
 import { z } from "zod";
 
 const createOrderSchema = z.object({
@@ -15,6 +17,7 @@ const createOrderSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const session = await getSession();
   const prisma = await getPrisma();
   const body = await req.json();
   const parsed = createOrderSchema.safeParse(body);
@@ -46,6 +49,15 @@ export async function POST(req: NextRequest) {
       },
     },
     include: { items: { include: { product: true } } },
+  });
+  await recordAudit(prisma, {
+    userId: session.user?.userId,
+    userEmail: session.user?.email,
+    action: "CHECKOUT",
+    resource: "order",
+    resourceId: order.id,
+    details: `結帳 訂單 ${order.orderNo} 桌${order.tableNo ?? "—"} $${(order.totalCents / 100).toLocaleString()}`,
+    ip: getClientIp(req.headers),
   });
   return NextResponse.json(order);
 }

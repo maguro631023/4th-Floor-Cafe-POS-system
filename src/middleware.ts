@@ -42,6 +42,10 @@ export async function middleware(request: NextRequest) {
   if (role === "MANAGER" && (pathname === "/users" || pathname.startsWith("/users/"))) {
     return NextResponse.redirect(new URL("/", request.url));
   }
+  // 稽核日誌僅管理員可進入
+  if ((pathname === "/audit" || pathname.startsWith("/audit/")) && role !== "ADMIN") {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
   return NextResponse.next();
 }
 

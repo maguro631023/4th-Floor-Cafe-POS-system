@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { getPrisma } from "@/lib/db";
 import { getSession, hashPassword, canAccessUserManagement } from "@/lib/auth";
+import { recordAudit, getClientIp } from "@/lib/audit";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -43,6 +44,15 @@ export async function PATCH(
     where: { id },
     data,
     select: { id: true, email: true, name: true, role: true, isActive: true, createdAt: true },
+  });
+  await recordAudit(prisma, {
+    userId: session.user.userId,
+    userEmail: session.user.email,
+    action: "UPDATE",
+    resource: "user",
+    resourceId: id,
+    details: `修改使用者 ${user.email}`,
+    ip: getClientIp(req.headers),
   });
   return NextResponse.json(user);
 }

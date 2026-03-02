@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
+import { getSession } from "@/lib/auth";
+import { recordAudit, getClientIp } from "@/lib/audit";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -11,6 +13,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await getSession();
   const prisma = await getPrisma();
   const { id } = await params;
   const body = await req.json();
@@ -23,15 +26,35 @@ export async function PATCH(
     data: parsed.data,
     include: { items: { include: { product: true } } },
   });
+  await recordAudit(prisma, {
+    userId: session.user?.userId,
+    userEmail: session.user?.email,
+    action: "UPDATE",
+    resource: "order",
+    resourceId: id,
+    details: `修改訂單 ${order.orderNo}`,
+    ip: getClientIp(req.headers),
+  });
   return NextResponse.json(order);
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await getSession();
   const prisma = await getPrisma();
   const { id } = await params;
+  const order = await prisma.order.findUnique({ where: { id }, select: { orderNo: true } });
   await prisma.order.delete({ where: { id } });
+  await recordAudit(prisma, {
+    userId: session.user?.userId,
+    userEmail: session.user?.email,
+    action: "DELETE",
+    resource: "order",
+    resourceId: id,
+    details: order ? `刪除訂單 ${order.orderNo}` : "刪除訂單",
+    ip: getClientIp(req.headers),
+  });
   return NextResponse.json({ ok: true });
 }

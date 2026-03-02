@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
+import { getSession } from "@/lib/auth";
+import { recordAudit, getClientIp } from "@/lib/audit";
 import { z } from "zod";
 
 const adjustSchema = z.object({
@@ -27,6 +29,15 @@ export async function POST(
     where: { id },
     data: { stockQuantity: nextStock },
     include: { category: true },
+  });
+  await recordAudit(prisma, {
+    userId: session.user?.userId,
+    userEmail: session.user?.email,
+    action: "STOCK_ADJUST",
+    resource: "stock",
+    resourceId: id,
+    details: `${product.name} 庫存 ${current} → ${nextStock} (${parsed.data.delta >= 0 ? "+" : ""}${parsed.data.delta})`,
+    ip: getClientIp(req.headers),
   });
   return NextResponse.json(updated);
 }

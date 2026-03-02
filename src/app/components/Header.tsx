@@ -34,6 +34,7 @@ export default function Header({ user }: { user: SessionUser | null }) {
           </span>
           <span className="header-nav-admin inline-flex items-center gap-4">
             <a href="/users" className="hover:underline">使用者管理</a>
+            <a href="/audit" className="hover:underline">系統操作稽核日誌</a>
           </span>
           <span className="flex items-center gap-2 text-amber-100">
             <span className="text-sm">{user.name}</span>

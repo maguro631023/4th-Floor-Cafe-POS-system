@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
+import { getSession } from "@/lib/auth";
+import { recordAudit, getClientIp } from "@/lib/audit";
 import { z } from "zod";
 
 const createSchema = z.object({
@@ -23,6 +25,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const session = await getSession();
   const prisma = await getPrisma();
   const body = await req.json();
   const parsed = createSchema.safeParse(body);
@@ -40,6 +43,15 @@ export async function POST(req: NextRequest) {
       lowStockThreshold: parsed.data.lowStockThreshold ?? null,
     },
     include: { category: true },
+  });
+  await recordAudit(prisma, {
+    userId: session.user?.userId,
+    userEmail: session.user?.email,
+    action: "CREATE",
+    resource: "product",
+    resourceId: product.id,
+    details: `新增品項 ${product.name}`,
+    ip: getClientIp(req.headers),
   });
   return NextResponse.json(product);
 }
