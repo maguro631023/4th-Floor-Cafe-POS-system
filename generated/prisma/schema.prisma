@@ -1,0 +1,73 @@
+// 4樓咖啡 POS - PostgreSQL @ Railway
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN // 全部功能含使用者管理
+  MANAGER // 除使用者管理外全部
+  STAFF // 收銀、訂單查詢、品項、分類、庫存、報表
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         UserRole @default(STAFF)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model Category {
+  id        String    @id // drink, light_food, set_meal, other
+  name      String
+  sortOrder Int       @default(0)
+  products  Product[]
+}
+
+model Product {
+  id                String      @id @default(cuid())
+  name              String // 品名 e.g. 拿鐵(大)、美式第一杯
+  priceCents        Int // 售價（元 → 存為分避免浮點）
+  categoryId        String?
+  category          Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  isActive          Boolean     @default(true)
+  sortOrder         Int         @default(0)
+  stockQuantity     Int? // 庫存數量，null 表示不追蹤
+  lowStockThreshold Int? // 低庫存警示門檻
+  orderItems        OrderItem[]
+}
+
+model Order {
+  id         String      @id @default(cuid())
+  orderNo    String      @unique // 訂單編號 e.g. 20260101-001
+  tableNo    String? // 桌號 e.g. 1, A3, 外帶
+  totalCents Int // 訂單總額（分）
+  status     OrderStatus @default(COMPLETED)
+  createdAt  DateTime    @default(now())
+  items      OrderItem[]
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity       Int     @default(1)
+  unitPriceCents Int // 結帳當下單價（分）
+  subtotalCents  Int // quantity * unitPriceCents
+}

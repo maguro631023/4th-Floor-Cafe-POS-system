@@ -4,7 +4,7 @@
  */
 const path = require("path");
 const bcrypt = require("bcryptjs");
-const { PrismaClient } = require(path.join(__dirname, "../generated/prisma/index.js"));
+const { PrismaClient } = require(path.join(__dirname, "../node_modules/.prisma/client/index.js"));
 const prisma = new PrismaClient();
 
 const categories = [

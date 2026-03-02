@@ -2,7 +2,6 @@ import path from "path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@prisma/client"],
   outputFileTracingRoot: path.join(__dirname),
 };
 
