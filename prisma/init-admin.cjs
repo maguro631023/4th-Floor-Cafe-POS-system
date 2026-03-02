@@ -5,7 +5,8 @@
 const path = require("path");
 const bcrypt = require("bcryptjs");
 const { PrismaClient } = require(path.join(__dirname, "../node_modules/.prisma/client/index.js"));
-const prisma = new PrismaClient();
+const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
+const prisma = new PrismaClient({ datasources: { db: { url: dbUrl } } });
 
 const ADMIN_EMAIL = "admin@4fcafe.com";
 const ADMIN_PASSWORD = "admin123";
