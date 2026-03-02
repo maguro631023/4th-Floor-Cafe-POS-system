@@ -11,3 +11,12 @@ body {
   color: var(--foreground);
   background: var(--background);
 }
+
+/* 依權限隱藏導覽：櫃台只顯示收銀、訂單查詢；店長隱藏使用者管理 */
+nav.header-nav[data-user-role="STAFF"] .header-nav-manager,
+nav.header-nav[data-user-role="STAFF"] .header-nav-admin {
+  display: none;
+}
+nav.header-nav[data-user-role="MANAGER"] .header-nav-admin {
+  display: none;
+}

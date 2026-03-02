@@ -32,6 +32,16 @@ export async function middleware(request: NextRequest) {
     url.searchParams.set("from", pathname);
     return NextResponse.redirect(url);
   }
+  const role = data.user.role;
+  // 櫃台(STAFF)：僅允許 收銀(/) 與 訂單查詢(/orders，不含 /orders/manage)
+  const staffOnlyPaths = ["/orders/manage", "/products", "/inventory", "/reports", "/users"];
+  if (role === "STAFF" && staffOnlyPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+  // 店長(MANAGER)：僅隱藏 使用者管理
+  if (role === "MANAGER" && (pathname === "/users" || pathname.startsWith("/users/"))) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
   return NextResponse.next();
 }
 

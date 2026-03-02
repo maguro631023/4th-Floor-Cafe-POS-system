@@ -28,6 +28,103 @@ export default function ProductsPage() {
   const [newCategoryId, setNewCategoryId] = useState<string>("");
   const [adding, setAdding] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchBusy, setBatchBusy] = useState(false);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const toggleSelectCategory = (list: Product[]) => {
+    const ids = list.map((p) => p.id);
+    const allSelected = ids.every((id) => selectedIds.has(id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allSelected) ids.forEach((id) => next.delete(id));
+      else ids.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const batchDownload = () => {
+    const list = selectedIds.size > 0 ? products.filter((p) => selectedIds.has(p.id)) : products;
+    const headers = "品名,售價(元),分類,狀態\n";
+    const rows = list
+      .map(
+        (p) =>
+          `"${(p.name || "").replace(/"/g, '""')}",${p.priceCents / 100},"${p.category?.name ?? ""}",${p.isActive ? "啟用" : "停用"}`
+      )
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + headers + rows], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `品項清單_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setMessage({ type: "ok", text: `已下載 ${list.length} 筆` });
+  };
+
+  const batchEnable = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) {
+      setMessage({ type: "err", text: "請先勾選要上架的品項" });
+      return;
+    }
+    setBatchBusy(true);
+    setMessage(null);
+    let done = 0;
+    for (const id of ids) {
+      try {
+        const res = await fetch(`/api/products/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: true }),
+        });
+        if (res.ok) done++;
+      } catch {
+        //
+      }
+    }
+    setSelectedIds(new Set());
+    fetchProducts();
+    setMessage({ type: "ok", text: `已上架 ${done} 筆` });
+    setBatchBusy(false);
+  };
+
+  const batchDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) {
+      setMessage({ type: "err", text: "請先勾選要刪除的品項" });
+      return;
+    }
+    if (!confirm(`確定要刪除所選 ${ids.length} 筆品項？已有訂單紀錄的品項將略過。`)) return;
+    setBatchBusy(true);
+    setMessage(null);
+    let deleted = 0;
+    let skipped = 0;
+    for (const id of ids) {
+      try {
+        const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) deleted++;
+        else skipped++;
+      } catch {
+        skipped++;
+      }
+    }
+    setSelectedIds(new Set());
+    fetchProducts();
+    setMessage({
+      type: "ok",
+      text: `已刪除 ${deleted} 筆${skipped > 0 ? `，${skipped} 筆因有訂單略過` : ""}`,
+    });
+    setBatchBusy(false);
+  };
 
   const fetchProducts = useCallback(() => {
     setLoading(true);
@@ -252,6 +349,32 @@ export default function ProductsPage() {
             </div>
           </div>
         )}
+        <span className="flex gap-2">
+          <button
+            type="button"
+            onClick={batchDownload}
+            disabled={batchBusy}
+            className="rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-700 text-sm font-medium hover:bg-stone-50 disabled:opacity-50"
+          >
+            批次下載
+          </button>
+          <button
+            type="button"
+            onClick={batchEnable}
+            disabled={batchBusy || selectedIds.size === 0}
+            className="rounded-lg border border-green-300 bg-green-50 px-3 py-2 text-green-800 text-sm font-medium hover:bg-green-100 disabled:opacity-50"
+          >
+            批次上架
+          </button>
+          <button
+            type="button"
+            onClick={batchDelete}
+            disabled={batchBusy || selectedIds.size === 0}
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-700 text-sm font-medium hover:bg-red-100 disabled:opacity-50"
+          >
+            批次刪除
+          </button>
+        </span>
       </div>
 
       {message && (
@@ -272,6 +395,14 @@ export default function ProductsPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-stone-600 border-b border-stone-200 bg-stone-50">
+                      <th className="px-2 py-2 w-10">
+                        <input
+                          type="checkbox"
+                          checked={list.length > 0 && list.every((p) => selectedIds.has(p.id))}
+                          onChange={() => toggleSelectCategory(list)}
+                          className="rounded border-stone-300"
+                        />
+                      </th>
                       <th className="px-4 py-2">品名</th>
                       <th className="px-4 py-2 w-28">售價（元）</th>
                       <th className="px-4 py-2 w-24">狀態</th>
@@ -281,6 +412,14 @@ export default function ProductsPage() {
                   <tbody>
                     {list.map((p) => (
                       <tr key={p.id} className="border-b border-stone-100">
+                        <td className="px-2 py-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(p.id)}
+                            onChange={() => toggleSelect(p.id)}
+                            className="rounded border-stone-300"
+                          />
+                        </td>
                         <td className="px-4 py-2">
                           {editingId === p.id ? (
                             <input
