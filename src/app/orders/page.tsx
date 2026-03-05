@@ -197,7 +197,7 @@ export default function OrdersPage() {
                                 {o.mobileSource
                                   ? "手機點餐"
                                   : o.handledBy
-                                  ? `使用者：${o.handledBy}`
+                                  ? `${o.handledBy}`
                                   : ""}
                               </span>
                             )}
