@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 type OrderItem = {
   id: string;
@@ -36,6 +36,7 @@ export default function OrdersPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const alertedMobileRef = useRef(false);
 
   const fetchOrders = useCallback(() => {
     setLoading(true);
@@ -56,6 +57,21 @@ export default function OrdersPage() {
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+
+  useEffect(() => {
+    if (loading || orders.length === 0) return;
+    const pendingMobile = orders.filter((o) => o.status === "PENDING" && o.mobileSource);
+    if (pendingMobile.length === 0) {
+      alertedMobileRef.current = false;
+      return;
+    }
+    if (!alertedMobileRef.current) {
+      alertedMobileRef.current = true;
+      window.alert(
+        `目前有 ${pendingMobile.length} 筆手機點餐訂單待處理，請確認並點擊「完成」。`
+      );
+    }
+  }, [orders, loading]);
 
   const statusLabel: Record<string, string> = {
     PENDING: "待處理",
