@@ -254,7 +254,13 @@ export default function InventoryPage() {
     try {
       const res = await fetch(`/api/products/${p.id}`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error?.message || "刪除失敗");
+      if (!res.ok) {
+        const msg =
+          (data?.error && (typeof data.error === "string" ? data.error : data.error.message)) ||
+          data?.message ||
+          "刪除失敗";
+        throw new Error(msg);
+      }
       setProducts((prev) => prev.filter((x) => x.id !== p.id));
       setMessage({ type: "ok", text: "已刪除品項" });
     } catch (e) {
