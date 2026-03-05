@@ -11,11 +11,27 @@ const createSchema = z.object({
 });
 
 export async function GET() {
-  const prisma = await getPrisma();
-  const materials = await prisma.material.findMany({
-    orderBy: { sortOrder: "asc", name: "asc" },
-  });
-  return NextResponse.json(materials);
+  try {
+    const prisma = await getPrisma();
+    const materials = await prisma.material.findMany({
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    });
+    return NextResponse.json(materials);
+  } catch (err) {
+    console.error("[GET /api/materials]", err);
+    const message = err instanceof Error ? err.message : String(err);
+    if (
+      message.includes("does not exist") ||
+      message.includes("Material") ||
+      message.includes("relation")
+    ) {
+      return NextResponse.json([], { status: 200 });
+    }
+    return NextResponse.json(
+      { error: { message: "無法取得原料列表，請確認已執行資料庫更新（prisma db push）。" } },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {
