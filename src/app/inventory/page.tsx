@@ -259,12 +259,16 @@ export default function InventoryPage() {
           (data?.error && (typeof data.error === "string" ? data.error : data.error.message)) ||
           data?.message ||
           "刪除失敗";
-        throw new Error(msg);
+        setMessage({ type: "err", text: msg });
+        window.alert(msg);
+        return;
       }
       setProducts((prev) => prev.filter((x) => x.id !== p.id));
       setMessage({ type: "ok", text: "已刪除品項" });
     } catch (e) {
-      setMessage({ type: "err", text: e instanceof Error ? e.message : "刪除失敗" });
+      const text = e instanceof Error ? e.message : "刪除失敗";
+      setMessage({ type: "err", text });
+      window.alert(text);
     } finally {
       setDeletingProductId(null);
     }
