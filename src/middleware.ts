@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getSessionFromCookie, sessionOptions } from "@/lib/auth";
 
-const publicPaths = ["/login"];
+// 不需登入即可存取的路徑（含 API）
+const publicPaths = ["/login", "/mobile-order", "/api/public-products", "/api/mobile-orders"];
 const authApiPrefix = "/api/auth/";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (pathname.startsWith(authApiPrefix) || publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+  if (
+    pathname.startsWith(authApiPrefix) ||
+    publicPaths.some((p) => pathname === p || pathname.startsWith(p + "/"))
+  ) {
     if (pathname === "/login") {
       const cookie = request.cookies.get(sessionOptions.cookieName)?.value;
       if (cookie) {

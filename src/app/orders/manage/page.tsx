@@ -290,7 +290,14 @@ export default function OrderManagePage() {
                             ))}
                           </select>
                         ) : (
-                          statusLabel[o.status] ?? o.status
+                          <div className="flex flex-col gap-1">
+                            <span>{statusLabel[o.status] ?? o.status}</span>
+                            {o.status === "PENDING" && (
+                              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 border border-emerald-200">
+                                手機點餐（待處理）
+                              </span>
+                            )}
+                          </div>
                         )}
                       </td>
                       <td className="px-4 py-2 text-stone-600">
