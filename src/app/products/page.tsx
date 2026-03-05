@@ -30,6 +30,12 @@ export default function ProductsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchBusy, setBatchBusy] = useState(false);
+  const [bomProduct, setBomProduct] = useState<Product | null>(null);
+  const [bomItems, setBomItems] = useState<{ materialId: string; material: { name: string; unit: string }; quantityPerUnit: number }[]>([]);
+  const [materials, setMaterials] = useState<{ id: string; name: string; unit: string }[]>([]);
+  const [bomSaving, setBomSaving] = useState(false);
+  const [bomNewMaterialId, setBomNewMaterialId] = useState("");
+  const [bomNewQty, setBomNewQty] = useState("");
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -265,6 +271,63 @@ export default function ProductsPage() {
     return acc;
   }, {});
 
+  useEffect(() => {
+    if (!bomProduct) return;
+    Promise.all([
+      fetch(`/api/products/${bomProduct.id}/bom`).then((r) => r.json()).catch(() => []),
+      fetch("/api/materials").then((r) => r.json()).catch(() => []),
+    ]).then(([bom, mats]) => {
+      setBomItems(bom);
+      setMaterials(mats);
+      setBomNewMaterialId("");
+      setBomNewQty("");
+    });
+  }, [bomProduct?.id]);
+
+  const addBomRow = () => {
+    const mid = bomNewMaterialId.trim();
+    const q = parseFloat(bomNewQty);
+    if (!mid || isNaN(q) || q < 0) return;
+    const mat = materials.find((m) => m.id === mid);
+    if (!mat || bomItems.some((i) => i.materialId === mid)) return;
+    setBomItems((prev) => [...prev, { materialId: mid, material: mat, quantityPerUnit: q }]);
+    setBomNewMaterialId("");
+    setBomNewQty("");
+  };
+
+  const removeBomRow = (materialId: string) => {
+    setBomItems((prev) => prev.filter((i) => i.materialId !== materialId));
+  };
+
+  const updateBomQty = (materialId: string, quantityPerUnit: number) => {
+    setBomItems((prev) =>
+      prev.map((i) => (i.materialId === materialId ? { ...i, quantityPerUnit } : i))
+    );
+  };
+
+  const saveBom = async () => {
+    if (!bomProduct) return;
+    setBomSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/products/${bomProduct.id}/bom`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: bomItems.map((i) => ({ materialId: i.materialId, quantityPerUnit: i.quantityPerUnit })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || "儲存失敗");
+      setBomItems(data);
+      setMessage({ type: "ok", text: "BOM 已儲存" });
+    } catch (e) {
+      setMessage({ type: "err", text: e instanceof Error ? e.message : "儲存失敗" });
+    } finally {
+      setBomSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-stone-800">品項管理</h1>
@@ -483,6 +546,13 @@ export default function ProductsPage() {
                               </button>
                               <button
                                 type="button"
+                                onClick={() => setBomProduct(p)}
+                                className="text-emerald-700 font-medium hover:underline"
+                              >
+                                BOM
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => deleteProduct(p)}
                                 disabled={deletingId === p.id}
                                 className="text-red-600 font-medium hover:underline disabled:opacity-50"
@@ -499,6 +569,93 @@ export default function ProductsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {bomProduct && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setBomProduct(null)}>
+          <div className="bg-white rounded-xl shadow-lg max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="px-4 py-3 border-b border-stone-200 font-semibold text-stone-800">
+              BOM：{bomProduct.name}
+            </div>
+            <p className="px-4 py-2 text-stone-600 text-sm">每 1 單位品項所需原料（訂單完成時會依此自動扣原料庫存）</p>
+            <div className="overflow-y-auto flex-1 px-4 py-2">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-stone-600 border-b border-stone-200">
+                    <th className="py-1.5">原料</th>
+                    <th className="py-1.5 w-24">用量/單位</th>
+                    <th className="py-1.5 w-14"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bomItems.map((i) => (
+                    <tr key={i.materialId} className="border-b border-stone-100">
+                      <td className="py-1.5">{i.material.name} ({i.material.unit})</td>
+                      <td className="py-1.5">
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.1}
+                          value={i.quantityPerUnit}
+                          onChange={(e) => updateBomQty(i.materialId, parseFloat(e.target.value) || 0)}
+                          className="w-20 rounded border border-stone-300 px-2 py-1"
+                        />
+                      </td>
+                      <td className="py-1.5">
+                        <button type="button" onClick={() => removeBomRow(i.materialId)} className="text-red-600 text-xs hover:underline">移除</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="flex flex-wrap gap-2 items-end mt-3 border-t border-stone-200 pt-3">
+                <select
+                  value={bomNewMaterialId}
+                  onChange={(e) => setBomNewMaterialId(e.target.value)}
+                  className="rounded border border-stone-300 px-2 py-1.5 text-sm w-36"
+                >
+                  <option value="">選擇原料</option>
+                  {materials.filter((m) => !bomItems.some((i) => i.materialId === m.id)).map((m) => (
+                    <option key={m.id} value={m.id}>{m.name} ({m.unit})</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  value={bomNewQty}
+                  onChange={(e) => setBomNewQty(e.target.value)}
+                  placeholder="用量"
+                  className="rounded border border-stone-300 px-2 py-1.5 w-20 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={addBomRow}
+                  className="rounded bg-emerald-600 px-3 py-1.5 text-white text-sm hover:bg-emerald-700"
+                >
+                  加入
+                </button>
+              </div>
+            </div>
+            <div className="px-4 py-3 border-t border-stone-200 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setBomProduct(null)}
+                className="rounded border border-stone-300 px-3 py-1.5 text-stone-700 text-sm hover:bg-stone-50"
+              >
+                關閉
+              </button>
+              <button
+                type="button"
+                onClick={saveBom}
+                disabled={bomSaving}
+                className="rounded bg-amber-600 px-3 py-1.5 text-white text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
+              >
+                {bomSaving ? "儲存中..." : "儲存"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

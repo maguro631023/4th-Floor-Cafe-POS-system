@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { recordAudit, getClientIp } from "@/lib/audit";
-import { deductMaterialsForOrder } from "@/lib/bom";
 import { z } from "zod";
 
 const updateSchema = z.object({
-  tableNo: z.string().max(32).nullable().optional(),
-  status: z.enum(["PENDING", "COMPLETED", "CANCELLED"]).optional(),
+  name: z.string().min(1).optional(),
+  unit: z.string().min(1).max(16).optional(),
+  lowStockThreshold: z.number().int().min(0).nullable().optional(),
 });
 
 export async function PATCH(
@@ -22,25 +22,20 @@ export async function PATCH(
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
-  const previous = await prisma.order.findUnique({ where: { id }, select: { status: true } });
-  const order = await prisma.order.update({
+  const material = await prisma.material.update({
     where: { id },
     data: parsed.data,
-    include: { items: { include: { product: true } } },
   });
-  if (parsed.data.status === "COMPLETED" && previous?.status !== "COMPLETED") {
-    await deductMaterialsForOrder(prisma, id);
-  }
   await recordAudit(prisma, {
     userId: session.user?.userId,
     userEmail: session.user?.email,
     action: "UPDATE",
-    resource: "order",
+    resource: "material",
     resourceId: id,
-    details: `修改訂單 ${order.orderNo}`,
+    details: `修改原料 ${material.name}`,
     ip: getClientIp(req.headers),
   });
-  return NextResponse.json(order);
+  return NextResponse.json(material);
 }
 
 export async function DELETE(
@@ -50,15 +45,15 @@ export async function DELETE(
   const session = await getSession();
   const prisma = await getPrisma();
   const { id } = await params;
-  const order = await prisma.order.findUnique({ where: { id }, select: { orderNo: true } });
-  await prisma.order.delete({ where: { id } });
+  const material = await prisma.material.findUnique({ where: { id }, select: { name: true } });
+  await prisma.material.delete({ where: { id } });
   await recordAudit(prisma, {
     userId: session.user?.userId,
     userEmail: session.user?.email,
     action: "DELETE",
-    resource: "order",
+    resource: "material",
     resourceId: id,
-    details: order ? `刪除訂單 ${order.orderNo}` : "刪除訂單",
+    details: material ? `刪除原料 ${material.name}` : "刪除原料",
     ip: getClientIp(req.headers),
   });
   return NextResponse.json({ ok: true });

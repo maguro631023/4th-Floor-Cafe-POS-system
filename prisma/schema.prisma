@@ -43,6 +43,27 @@ model Product {
   stockQuantity     Int?        // 庫存數量，null 表示不追蹤
   lowStockThreshold Int?        // 低庫存警示門檻
   orderItems        OrderItem[]
+  bomItems          ProductBom[] // BOM：每單位品項使用的原料
+}
+
+model Material {
+  id                String       @id @default(cuid())
+  name              String       // 原料名稱 e.g. 咖啡豆、鮮奶
+  unit              String       // 單位 e.g. g, ml, 個, 包
+  stockQuantity     Int          @default(0) // 目前庫存（依 unit 計）
+  lowStockThreshold Int?         // 低庫存警示門檻
+  sortOrder         Int          @default(0)
+  bomItems          ProductBom[]
+}
+
+model ProductBom {
+  id              String   @id @default(cuid())
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  materialId      String
+  material        Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  quantityPerUnit Float    // 每 1 單位品項所需原料數量（依該原料的 unit）
+  @@unique([productId, materialId])
 }
 
 model Order {

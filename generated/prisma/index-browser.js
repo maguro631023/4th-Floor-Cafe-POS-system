@@ -148,6 +148,22 @@ exports.Prisma.ProductScalarFieldEnum = {
   lowStockThreshold: 'lowStockThreshold'
 };
 
+exports.Prisma.MaterialScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  unit: 'unit',
+  stockQuantity: 'stockQuantity',
+  lowStockThreshold: 'lowStockThreshold',
+  sortOrder: 'sortOrder'
+};
+
+exports.Prisma.ProductBomScalarFieldEnum = {
+  id: 'id',
+  productId: 'productId',
+  materialId: 'materialId',
+  quantityPerUnit: 'quantityPerUnit'
+};
+
 exports.Prisma.OrderScalarFieldEnum = {
   id: 'id',
   orderNo: 'orderNo',
@@ -208,6 +224,8 @@ exports.Prisma.ModelName = {
   User: 'User',
   Category: 'Category',
   Product: 'Product',
+  Material: 'Material',
+  ProductBom: 'ProductBom',
   Order: 'Order',
   OrderItem: 'OrderItem',
   AuditLog: 'AuditLog'

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { recordAudit, getClientIp } from "@/lib/audit";
+import { deductMaterialsForOrder } from "@/lib/bom";
 import { z } from "zod";
 
 const createOrderSchema = z.object({
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
     details: `結帳 訂單 ${order.orderNo} 桌${order.tableNo ?? "—"} $${(order.totalCents / 100).toLocaleString()}`,
     ip: getClientIp(req.headers),
   });
+  await deductMaterialsForOrder(prisma, order.id);
   return NextResponse.json(order);
 }
 
