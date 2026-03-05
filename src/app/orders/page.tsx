@@ -32,6 +32,8 @@ export default function OrdersPage() {
   const [tableFilter, setTableFilter] = useState("");
   const [orderNoFilter, setOrderNoFilter] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [completingId, setCompletingId] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const fetchOrders = useCallback(() => {
     setLoading(true);
@@ -57,6 +59,33 @@ export default function OrdersPage() {
     PENDING: "待處理",
     COMPLETED: "已完成",
     CANCELLED: "已取消",
+  };
+
+  const completeOrder = async (e: React.MouseEvent, order: Order) => {
+    e.stopPropagation();
+    if (order.status !== "PENDING") return;
+    setCompletingId(order.id);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "COMPLETED" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error?.message || "更新失敗");
+      setOrders((prev) =>
+        prev.map((x) => (x.id === order.id ? { ...x, status: "COMPLETED" } : x))
+      );
+      setMessage({ type: "ok", text: `訂單 ${order.orderNo} 已標記為完成` });
+    } catch (err) {
+      setMessage({
+        type: "err",
+        text: err instanceof Error ? err.message : "更新失敗",
+      });
+    } finally {
+      setCompletingId(null);
+    }
   };
 
   return (
@@ -113,6 +142,12 @@ export default function OrdersPage() {
         </button>
       </div>
 
+      {message && (
+        <p className={message.type === "ok" ? "text-green-600 text-sm" : "text-red-600 text-sm"}>
+          {message.text}
+        </p>
+      )}
+
       {loading && <p className="text-stone-500">載入中...</p>}
       {!loading && (
         <div className="bg-white rounded-xl border border-amber-200 shadow-sm overflow-hidden">
@@ -125,7 +160,7 @@ export default function OrdersPage() {
                   <th className="px-4 py-2 w-24">金額</th>
                   <th className="px-4 py-2 w-24">狀態</th>
                   <th className="px-4 py-2">時間</th>
-                  <th className="px-4 py-2 w-16"></th>
+                  <th className="px-4 py-2 w-28">操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -147,14 +182,35 @@ export default function OrdersPage() {
                         <td className="px-4 py-2 text-amber-700 font-medium">
                           ${(o.totalCents / 100).toLocaleString()}
                         </td>
-                        <td className="px-4 py-2">{statusLabel[o.status] ?? o.status}</td>
+                        <td className="px-4 py-2">
+                          <div className="flex flex-col gap-1">
+                            <span>{statusLabel[o.status] ?? o.status}</span>
+                            {o.status === "PENDING" && (
+                              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 border border-emerald-200">
+                                手機點餐（待處理）
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-4 py-2 text-stone-600">
                           {new Date(o.createdAt).toLocaleString("zh-TW")}
                         </td>
-                        <td className="px-4 py-2">
-                          <span className="text-amber-700 text-xs">
-                            {expandedId === o.id ? "收起" : "明細"}
-                          </span>
+                        <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-2">
+                            {o.status === "PENDING" && (
+                              <button
+                                type="button"
+                                onClick={(e) => completeOrder(e, o)}
+                                disabled={completingId === o.id}
+                                className="rounded bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                              >
+                                {completingId === o.id ? "處理中..." : "完成"}
+                              </button>
+                            )}
+                            <span className="text-amber-700 text-xs">
+                              {expandedId === o.id ? "收起" : "明細"}
+                            </span>
+                          </div>
                         </td>
                       </tr>,
                     expandedId === o.id && (
