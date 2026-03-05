@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(orders);
   }
 
-  // 從稽核日誌判斷是否為手機點餐，以及最後處理者（使用者 email）
+  // 從稽核日誌判斷是否為手機點餐，以及最後處理者（以使用者姓名顯示）
   const orderIds = orders.map((o) => o.id);
   const logs = await prisma.auditLog.findMany({
     where: { resource: "order", resourceId: { in: orderIds } },
@@ -104,11 +104,11 @@ export async function GET(req: NextRequest) {
     string,
     {
       mobileSource: boolean;
-      handledBy: string | null;
+      handledByUserId: string | null;
     }
   >();
   for (const id of orderIds) {
-    meta.set(id, { mobileSource: false, handledBy: null });
+    meta.set(id, { mobileSource: false, handledByUserId: null });
   }
   for (const log of logs) {
     const id = log.resourceId;
@@ -118,17 +118,30 @@ export async function GET(req: NextRequest) {
     if (log.action === "MOBILE_ORDER") {
       m.mobileSource = true;
     }
-    if (log.userEmail) {
-      m.handledBy = log.userEmail;
+    if (log.userId) {
+      m.handledByUserId = log.userId;
+    }
+  }
+
+  const userIds = [...new Set([...meta.values()].map((m) => m.handledByUserId).filter(Boolean))] as string[];
+  const userMap = new Map<string, string>();
+  if (userIds.length > 0) {
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true },
+    });
+    for (const u of users) {
+      userMap.set(u.id, u.name);
     }
   }
 
   const enriched = orders.map((o) => {
     const m = meta.get(o.id);
+    const handledByName = m?.handledByUserId ? userMap.get(m.handledByUserId) ?? null : null;
     return {
       ...o,
       mobileSource: m?.mobileSource ?? false,
-      handledBy: m?.handledBy ?? null,
+      handledBy: handledByName,
     };
   });
 
