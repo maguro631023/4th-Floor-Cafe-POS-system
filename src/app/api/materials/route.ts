@@ -42,10 +42,20 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
+  const nameTrimmed = parsed.data.name.trim();
+  const existing = await prisma.material.findFirst({
+    where: { name: { equals: nameTrimmed, mode: "insensitive" } },
+  });
+  if (existing) {
+    return NextResponse.json(
+      { error: { message: "相同原料名稱已存在，不可重複加入。" } },
+      { status: 400 }
+    );
+  }
   const count = await prisma.material.count();
   const material = await prisma.material.create({
     data: {
-      name: parsed.data.name.trim(),
+      name: nameTrimmed,
       unit: parsed.data.unit.trim(),
       lowStockThreshold: parsed.data.lowStockThreshold ?? null,
       sortOrder: count,
