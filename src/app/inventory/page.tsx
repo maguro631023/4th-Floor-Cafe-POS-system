@@ -41,6 +41,8 @@ export default function InventoryPage() {
   const [newMatName, setNewMatName] = useState("");
   const [newMatUnit, setNewMatUnit] = useState("");
   const [newMatThreshold, setNewMatThreshold] = useState("");
+  const [deletingMatId, setDeletingMatId] = useState<string | null>(null);
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
 
   const fetchProducts = useCallback(() => {
     setLoading(true);
@@ -225,6 +227,40 @@ export default function InventoryPage() {
       setMessage({ type: "err", text: e instanceof Error ? e.message : "調整失敗" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const deleteMaterial = async (m: Material) => {
+    if (!confirm(`確定要刪除原料「${m.name}」？若已有品項 BOM 使用此原料，將一併移除。`)) return;
+    setDeletingMatId(m.id);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/materials/${m.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error?.message || "刪除失敗");
+      setMaterials((prev) => prev.filter((x) => x.id !== m.id));
+      setMessage({ type: "ok", text: "已刪除原料" });
+    } catch (e) {
+      setMessage({ type: "err", text: e instanceof Error ? e.message : "刪除失敗" });
+    } finally {
+      setDeletingMatId(null);
+    }
+  };
+
+  const deleteProduct = async (p: Product) => {
+    if (!confirm(`確定要刪除品項「${p.name}」？若此品項已有訂單紀錄則無法刪除。`)) return;
+    setDeletingProductId(p.id);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/products/${p.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error?.message || "刪除失敗");
+      setProducts((prev) => prev.filter((x) => x.id !== p.id));
+      setMessage({ type: "ok", text: "已刪除品項" });
+    } catch (e) {
+      setMessage({ type: "err", text: e instanceof Error ? e.message : "刪除失敗" });
+    } finally {
+      setDeletingProductId(null);
     }
   };
 
@@ -427,6 +463,7 @@ export default function InventoryPage() {
                             <span className="flex gap-2">
                               <button type="button" onClick={() => { setMatEditId(m.id); setMatEditThreshold(m.lowStockThreshold != null ? String(m.lowStockThreshold) : ""); }} className="text-amber-700 font-medium hover:underline">編輯門檻</button>
                               <button type="button" onClick={() => { setMatAddStockId(m.id); setMatAddStockDelta(""); }} className="text-green-700 font-medium hover:underline">入/出庫</button>
+                              <button type="button" onClick={() => deleteMaterial(m)} disabled={deletingMatId === m.id} className="text-red-600 font-medium hover:underline disabled:opacity-50">{deletingMatId === m.id ? "刪除中..." : "刪除"}</button>
                             </span>
                           )}
                         </td>
@@ -556,6 +593,14 @@ export default function InventoryPage() {
                                   入庫
                                 </button>
                               )}
+                              <button
+                                type="button"
+                                onClick={() => deleteProduct(p)}
+                                disabled={deletingProductId === p.id}
+                                className="text-red-600 font-medium hover:underline disabled:opacity-50"
+                              >
+                                {deletingProductId === p.id ? "刪除中..." : "刪除"}
+                              </button>
                             </span>
                           )}
                         </td>
