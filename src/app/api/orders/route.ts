@@ -89,5 +89,48 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
     include: { items: { include: { product: true } } },
   });
-  return NextResponse.json(orders);
+  if (orders.length === 0) {
+    return NextResponse.json(orders);
+  }
+
+  // 從稽核日誌判斷是否為手機點餐，以及最後處理者（使用者 email）
+  const orderIds = orders.map((o) => o.id);
+  const logs = await prisma.auditLog.findMany({
+    where: { resource: "order", resourceId: { in: orderIds } },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const meta = new Map<
+    string,
+    {
+      mobileSource: boolean;
+      handledBy: string | null;
+    }
+  >();
+  for (const id of orderIds) {
+    meta.set(id, { mobileSource: false, handledBy: null });
+  }
+  for (const log of logs) {
+    const id = log.resourceId;
+    if (!id) continue;
+    const m = meta.get(id);
+    if (!m) continue;
+    if (log.action === "MOBILE_ORDER") {
+      m.mobileSource = true;
+    }
+    if (log.userEmail) {
+      m.handledBy = log.userEmail;
+    }
+  }
+
+  const enriched = orders.map((o) => {
+    const m = meta.get(o.id);
+    return {
+      ...o,
+      mobileSource: m?.mobileSource ?? false,
+      handledBy: m?.handledBy ?? null,
+    };
+  });
+
+  return NextResponse.json(enriched);
 }

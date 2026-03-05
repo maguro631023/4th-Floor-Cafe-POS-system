@@ -18,6 +18,8 @@ type Order = {
   status: string;
   createdAt: string;
   items: OrderItem[];
+  mobileSource?: boolean;
+  handledBy?: string | null;
 };
 
 export default function OrdersPage() {
@@ -61,7 +63,7 @@ export default function OrdersPage() {
     CANCELLED: "已取消",
   };
 
-  const completeOrder = async (e: React.MouseEvent, order: Order) => {
+  const completeOrder = async (e: any, order: Order) => {
     e.stopPropagation();
     if (order.status !== "PENDING") return;
     setCompletingId(order.id);
@@ -185,9 +187,18 @@ export default function OrdersPage() {
                         <td className="px-4 py-2">
                           <div className="flex flex-col gap-1">
                             <span>{statusLabel[o.status] ?? o.status}</span>
-                            {o.status === "PENDING" && (
+                            {o.status === "PENDING" && o.mobileSource && (
                               <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 border border-emerald-200">
                                 手機點餐（待處理）
+                              </span>
+                            )}
+                            {o.status === "COMPLETED" && (
+                              <span className="text-xs text-stone-600">
+                                {o.mobileSource
+                                  ? "手機點餐"
+                                  : o.handledBy
+                                  ? `使用者：${o.handledBy}`
+                                  : ""}
                               </span>
                             )}
                           </div>
