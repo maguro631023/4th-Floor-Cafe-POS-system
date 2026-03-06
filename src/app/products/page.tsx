@@ -58,14 +58,15 @@ export default function ProductsPage() {
 
   const batchDownload = () => {
     const list = selectedIds.size > 0 ? products.filter((p) => selectedIds.has(p.id)) : products;
-    const headers = "品名,售價(元),分類,狀態\n";
+    const CRLF = "\r\n";
+    const headers = "品名,售價(元),分類,狀態" + CRLF;
     const rows = list
       .map(
         (p) =>
           `"${(p.name || "").replace(/"/g, '""')}",${p.priceCents / 100},"${p.category?.name ?? ""}",${p.isActive ? "啟用" : "停用"}`
       )
-      .join("\n");
-    const blob = new Blob(["\uFEFF" + headers + rows], { type: "text/csv;charset=utf-8" });
+      .join(CRLF);
+    const blob = new Blob(["\uFEFF" + headers + rows], { type: "text/csv; charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -146,6 +147,110 @@ export default function ProductsPage() {
       text: `已刪除 ${deleted} 筆${skipped > 0 ? `，${skipped} 筆因有訂單略過` : ""}`,
     });
     setBatchBusy(false);
+  };
+
+  /** 解析 CSV 取得品名清單（支援 品名,售價,分類,狀態 或僅品名） */
+  const parseCsvProductNames = (text: string): string[] => {
+    const normalized = text.replace(/\uFEFF/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    const lines = normalized.split("\n").filter((line) => line.trim());
+    if (lines.length === 0) return [];
+    const parseRow = (row: string): string[] => {
+      const out: string[] = [];
+      let cur = "";
+      let inQuote = false;
+      for (let i = 0; i < row.length; i++) {
+        const c = row[i];
+        if (c === '"') {
+          if (inQuote && row[i + 1] === '"') {
+            cur += '"';
+            i++;
+          } else {
+            inQuote = !inQuote;
+          }
+        } else if (c === "," && !inQuote) {
+          out.push(cur.trim());
+          cur = "";
+        } else {
+          cur += c;
+        }
+      }
+      out.push(cur.trim());
+      return out;
+    };
+    const rows = lines.map((line) => parseRow(line));
+    const first = rows[0];
+    const nameCol = first.findIndex((c) => c === "品名" || c.includes("品名"));
+    const nameIdx = nameCol >= 0 ? nameCol : 0;
+    const skipHeader = nameCol >= 0;
+    const names = new Set<string>();
+    for (let i = skipHeader ? 1 : 0; i < rows.length; i++) {
+      const val = rows[i][nameIdx]?.trim().replace(/^"|"$/g, "").replace(/""/g, '"');
+      if (val) names.add(val);
+    }
+    return Array.from(names);
+  };
+
+  const batchEnableFromCsv = async (file: File) => {
+    const text = await file.text();
+    const names = parseCsvProductNames(text);
+    if (names.length === 0) {
+      setMessage({ type: "err", text: "CSV 中無有效品名，請確認格式（品名 或 品名,售價,分類,狀態）" });
+      return;
+    }
+    const nameToProducts = new Map<string, Product[]>();
+    for (const p of products) {
+      const list = nameToProducts.get(p.name) ?? [];
+      list.push(p);
+      nameToProducts.set(p.name, list);
+    }
+    const toEnableIds = new Set<string>();
+    const notFound: string[] = [];
+    for (const n of names) {
+      const list = nameToProducts.get(n);
+      if (list?.length) list.forEach((p) => toEnableIds.add(p.id));
+      else notFound.push(n);
+    }
+    const toEnable = products.filter((p) => toEnableIds.has(p.id));
+    if (toEnable.length === 0) {
+      setMessage({ type: "err", text: `未找到相符品項。CSV 品名需與系統完全一致。未找到：${notFound.slice(0, 5).join("、")}${notFound.length > 5 ? "…" : ""}` });
+      return;
+    }
+    setBatchBusy(true);
+    setMessage(null);
+    let done = 0;
+    let failed = 0;
+    for (const p of toEnable) {
+      try {
+        const res = await fetch(`/api/products/${p.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: true }),
+          credentials: "same-origin",
+        });
+        if (res.ok) done++;
+        else failed++;
+      } catch {
+        failed++;
+      }
+    }
+    fetchProducts();
+    const msg =
+      failed > 0
+        ? `已上架 ${done} 筆，${failed} 筆失敗`
+        : `已上架 ${done} 筆${notFound.length > 0 ? `，${notFound.length} 筆未找到` : ""}`;
+    setMessage({ type: done > 0 ? "ok" : "err", text: msg });
+    setBatchBusy(false);
+  };
+
+  const handleCsvFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      setMessage({ type: "err", text: "請選擇 .csv 檔案" });
+      return;
+    }
+    batchEnableFromCsv(file);
+    e.target.value = "";
   };
 
   const fetchProducts = useCallback(() => {
@@ -455,8 +560,21 @@ export default function ProductsPage() {
           >
             批次刪除
           </button>
+          <label
+            title="上傳 CSV，依品名批次上架。格式：品名,售價,分類,狀態 或僅品名"
+            className={`rounded-lg border border-green-400 bg-green-50 px-3 py-2 text-green-800 text-sm font-medium hover:bg-green-100 cursor-pointer inline-flex items-center ${batchBusy ? "opacity-50 cursor-not-allowed" : ""}`}
+          >
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleCsvFileChange}
+              disabled={batchBusy}
+              className="sr-only"
+            />
+            CSV 匯入上架
+          </label>
           {selectedIds.size === 0 && (
-            <span className="text-stone-600 text-sm">（勾選上方品項即可使用批次上架／刪除）</span>
+            <span className="text-stone-600 text-sm">（勾選品項或上傳 CSV 可批次上架）</span>
           )}
         </span>
       </div>
