@@ -149,8 +149,10 @@ export default function ProductsPage() {
     setBatchBusy(false);
   };
 
-  /** 解析 CSV 取得品名清單（支援 品名,售價,分類,狀態 或僅品名） */
-  const parseCsvProductNames = (text: string): string[] => {
+  type CsvRow = { name: string; priceCents?: number; categoryName?: string };
+
+  /** 解析 CSV 取得品項列（品名、售價、分類） */
+  const parseCsvRows = (text: string): CsvRow[] => {
     const normalized = text.replace(/\uFEFF/g, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
     const lines = normalized.split("\n").filter((line) => line.trim());
     if (lines.length === 0) return [];
@@ -179,21 +181,31 @@ export default function ProductsPage() {
     };
     const rows = lines.map((line) => parseRow(line));
     const first = rows[0];
-    const nameCol = first.findIndex((c) => c === "品名" || c.includes("品名"));
-    const nameIdx = nameCol >= 0 ? nameCol : 0;
-    const skipHeader = nameCol >= 0;
-    const names = new Set<string>();
-    for (let i = skipHeader ? 1 : 0; i < rows.length; i++) {
-      const val = rows[i][nameIdx]?.trim().replace(/^"|"$/g, "").replace(/""/g, '"');
-      if (val) names.add(val);
+    const nameIdx = first.findIndex((c) => c === "品名" || c.includes("品名"));
+    const priceIdx = first.findIndex((c) => c.includes("售價"));
+    const catIdx = first.findIndex((c) => c === "分類" || c.includes("分類"));
+    const hasHeader = nameIdx >= 0 || priceIdx >= 0 || catIdx >= 0;
+    const start = hasHeader ? 1 : 0;
+    const result: CsvRow[] = [];
+    for (let i = start; i < rows.length; i++) {
+      const r = rows[i];
+      const name = r[nameIdx >= 0 ? nameIdx : 0]?.trim().replace(/^"|"$/g, "").replace(/""/g, '"');
+      if (!name) continue;
+      let priceCents: number | undefined;
+      if (priceIdx >= 0 && r[priceIdx]) {
+        const raw = parseFloat(String(r[priceIdx]).replace(/[^\d.-]/g, ""));
+        if (!isNaN(raw)) priceCents = Math.round(raw * 100);
+      }
+      const categoryName = catIdx >= 0 ? r[catIdx]?.trim().replace(/^"|"$/g, "") : undefined;
+      result.push({ name, priceCents, categoryName });
     }
-    return Array.from(names);
+    return result;
   };
 
   const batchEnableFromCsv = async (file: File) => {
     const text = await file.text();
-    const names = parseCsvProductNames(text);
-    if (names.length === 0) {
+    const csvRows = parseCsvRows(text);
+    if (csvRows.length === 0) {
       setMessage({ type: "err", text: "CSV 中無有效品名，請確認格式（品名 或 品名,售價,分類,狀態）" });
       return;
     }
@@ -203,42 +215,90 @@ export default function ProductsPage() {
       list.push(p);
       nameToProducts.set(p.name, list);
     }
-    const toEnableIds = new Set<string>();
-    const notFound: string[] = [];
-    for (const n of names) {
-      const list = nameToProducts.get(n);
-      if (list?.length) list.forEach((p) => toEnableIds.add(p.id));
-      else notFound.push(n);
-    }
-    const toEnable = products.filter((p) => toEnableIds.has(p.id));
-    if (toEnable.length === 0) {
-      setMessage({ type: "err", text: `未找到相符品項。CSV 品名需與系統完全一致。未找到：${notFound.slice(0, 5).join("、")}${notFound.length > 5 ? "…" : ""}` });
-      return;
-    }
+    const categoryByName = new Map(categories.map((c) => [c.name, c.id]));
+
+    const slugify = (s: string) => {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+      return "cat_" + (h >>> 0).toString(36).slice(0, 12);
+    };
+
     setBatchBusy(true);
     setMessage(null);
-    let done = 0;
-    let failed = 0;
-    for (const p of toEnable) {
-      try {
-        const res = await fetch(`/api/products/${p.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isActive: true }),
-          credentials: "same-origin",
-        });
-        if (res.ok) done++;
-        else failed++;
-      } catch {
-        failed++;
+
+    const newCatNames = [...new Set(csvRows.map((r) => r.categoryName).filter(Boolean))] as string[];
+    for (const name of newCatNames) {
+      if (name && !categoryByName.has(name)) {
+        try {
+          const id = slugify(name);
+          const res = await fetch("/api/categories", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, name }),
+            credentials: "same-origin",
+          });
+          if (res.ok) {
+            categoryByName.set(name, id);
+            setCategories((prev) => [...prev, { id, name }]);
+          }
+        } catch {
+          //
+        }
       }
     }
+
+    let enabled = 0;
+    let created = 0;
+    let failed = 0;
+
+    for (const row of csvRows) {
+      const existing = nameToProducts.get(row.name);
+      if (existing?.length) {
+        for (const p of existing) {
+          try {
+            const res = await fetch(`/api/products/${p.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ isActive: true }),
+              credentials: "same-origin",
+            });
+            if (res.ok) enabled++;
+            else failed++;
+          } catch {
+            failed++;
+          }
+        }
+      } else {
+        const priceCents = row.priceCents ?? 0;
+        const categoryId = row.categoryName ? categoryByName.get(row.categoryName) ?? null : null;
+        try {
+          const res = await fetch("/api/products", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: row.name,
+              priceCents,
+              categoryId,
+            }),
+            credentials: "same-origin",
+          });
+          if (res.ok) created++;
+          else failed++;
+        } catch {
+          failed++;
+        }
+      }
+    }
+
     fetchProducts();
-    const msg =
-      failed > 0
-        ? `已上架 ${done} 筆，${failed} 筆失敗`
-        : `已上架 ${done} 筆${notFound.length > 0 ? `，${notFound.length} 筆未找到` : ""}`;
-    setMessage({ type: done > 0 ? "ok" : "err", text: msg });
+    const parts: string[] = [];
+    if (enabled > 0) parts.push(`已上架 ${enabled} 筆`);
+    if (created > 0) parts.push(`新增 ${created} 筆`);
+    if (failed > 0) parts.push(`${failed} 筆失敗`);
+    setMessage({
+      type: enabled + created > 0 ? "ok" : "err",
+      text: parts.length ? parts.join("，") : "匯入失敗",
+    });
     setBatchBusy(false);
   };
 
