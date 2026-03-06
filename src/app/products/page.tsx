@@ -76,49 +76,6 @@ export default function ProductsPage() {
     setMessage({ type: "ok", text: `已下載 ${list.length} 筆` });
   };
 
-  const batchEnable = async () => {
-    const ids = Array.from(selectedIds);
-    if (ids.length === 0) {
-      setMessage({ type: "err", text: "請先勾選要上架的品項" });
-      return;
-    }
-    setBatchBusy(true);
-    setMessage(null);
-    let done = 0;
-    let failed = 0;
-    for (const id of ids) {
-      try {
-        const res = await fetch(`/api/products/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isActive: true }),
-          credentials: "same-origin",
-        });
-        if (res.ok) {
-          done++;
-        } else {
-          failed++;
-          const err = await res.json().catch(() => ({}));
-          console.warn(`[批次上架] ${id} 失敗:`, res.status, err);
-        }
-      } catch (e) {
-        failed++;
-        console.warn(`[批次上架] ${id} 請求失敗:`, e);
-      }
-    }
-    setSelectedIds(new Set());
-    fetchProducts();
-    if (failed > 0) {
-      setMessage({
-        type: done > 0 ? "ok" : "err",
-        text: done > 0 ? `已上架 ${done} 筆，${failed} 筆失敗` : `上架失敗（${failed} 筆），請確認已登入且具權限`,
-      });
-    } else {
-      setMessage({ type: "ok", text: `已上架 ${done} 筆` });
-    }
-    setBatchBusy(false);
-  };
-
   const batchDelete = async () => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) {
@@ -604,15 +561,6 @@ export default function ProductsPage() {
           </button>
           <button
             type="button"
-            onClick={batchEnable}
-            disabled={batchBusy || selectedIds.size === 0}
-            title={selectedIds.size === 0 ? "請先勾選要上架的品項" : undefined}
-            className="rounded-lg border border-green-300 bg-green-50 px-3 py-2 text-green-800 text-sm font-medium hover:bg-green-100 disabled:opacity-50"
-          >
-            批次上架
-          </button>
-          <button
-            type="button"
             onClick={batchDelete}
             disabled={batchBusy || selectedIds.size === 0}
             title={selectedIds.size === 0 ? "請先勾選要刪除的品項" : undefined}
@@ -634,7 +582,7 @@ export default function ProductsPage() {
             CSV 匯入上架
           </label>
           {selectedIds.size === 0 && (
-            <span className="text-stone-600 text-sm">（勾選品項或上傳 CSV 可批次上架）</span>
+            <span className="text-stone-600 text-sm">（勾選品項可批次刪除，或上傳 CSV 匯入上架）</span>
           )}
         </span>
       </div>
