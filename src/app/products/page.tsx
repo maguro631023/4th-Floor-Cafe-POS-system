@@ -84,21 +84,37 @@ export default function ProductsPage() {
     setBatchBusy(true);
     setMessage(null);
     let done = 0;
+    let failed = 0;
     for (const id of ids) {
       try {
         const res = await fetch(`/api/products/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isActive: true }),
+          credentials: "same-origin",
         });
-        if (res.ok) done++;
-      } catch {
-        //
+        if (res.ok) {
+          done++;
+        } else {
+          failed++;
+          const err = await res.json().catch(() => ({}));
+          console.warn(`[批次上架] ${id} 失敗:`, res.status, err);
+        }
+      } catch (e) {
+        failed++;
+        console.warn(`[批次上架] ${id} 請求失敗:`, e);
       }
     }
     setSelectedIds(new Set());
     fetchProducts();
-    setMessage({ type: "ok", text: `已上架 ${done} 筆` });
+    if (failed > 0) {
+      setMessage({
+        type: done > 0 ? "ok" : "err",
+        text: done > 0 ? `已上架 ${done} 筆，${failed} 筆失敗` : `上架失敗（${failed} 筆），請確認已登入且具權限`,
+      });
+    } else {
+      setMessage({ type: "ok", text: `已上架 ${done} 筆` });
+    }
     setBatchBusy(false);
   };
 
@@ -412,7 +428,7 @@ export default function ProductsPage() {
             </div>
           </div>
         )}
-        <span className="flex gap-2">
+        <span className="flex items-center gap-2">
           <button
             type="button"
             onClick={batchDownload}
@@ -425,6 +441,7 @@ export default function ProductsPage() {
             type="button"
             onClick={batchEnable}
             disabled={batchBusy || selectedIds.size === 0}
+            title={selectedIds.size === 0 ? "請先勾選要上架的品項" : undefined}
             className="rounded-lg border border-green-300 bg-green-50 px-3 py-2 text-green-800 text-sm font-medium hover:bg-green-100 disabled:opacity-50"
           >
             批次上架
@@ -433,10 +450,14 @@ export default function ProductsPage() {
             type="button"
             onClick={batchDelete}
             disabled={batchBusy || selectedIds.size === 0}
+            title={selectedIds.size === 0 ? "請先勾選要刪除的品項" : undefined}
             className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-700 text-sm font-medium hover:bg-red-100 disabled:opacity-50"
           >
             批次刪除
           </button>
+          {selectedIds.size === 0 && (
+            <span className="text-stone-600 text-sm">（勾選上方品項即可使用批次上架／刪除）</span>
+          )}
         </span>
       </div>
 
