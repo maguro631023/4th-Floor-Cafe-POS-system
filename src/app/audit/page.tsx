@@ -113,7 +113,6 @@ export default function AuditPage() {
                   <th className="px-4 py-2">操作者</th>
                   <th className="px-4 py-2 w-20">操作</th>
                   <th className="px-4 py-2 w-20">資源</th>
-                  <th className="px-4 py-2">資源 ID</th>
                   <th className="px-4 py-2">說明</th>
                   <th className="px-4 py-2">IP</th>
                 </tr>
@@ -134,7 +133,6 @@ export default function AuditPage() {
                       <td className="px-4 py-2">{log.userEmail ?? "—"}</td>
                       <td className="px-4 py-2">{ACTION_LABELS[log.action] ?? log.action}</td>
                       <td className="px-4 py-2">{RESOURCE_LABELS[log.resource] ?? log.resource}</td>
-                      <td className="px-4 py-2 font-mono text-xs">{log.resourceId ?? "—"}</td>
                       <td className="px-4 py-2 text-stone-600 max-w-xs truncate">{log.details ?? "—"}</td>
                       <td className="px-4 py-2 text-stone-500 text-xs">{log.ip ?? "—"}</td>
                     </tr>
